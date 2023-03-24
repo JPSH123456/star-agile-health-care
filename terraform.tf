@@ -59,5 +59,5 @@ resource "aws_instance" "myec2" {
 }
 resource "aws_key_pair" "deployer" {
   key_name   = "tokyo"
-  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC0M5dm8dWE4Cd37s0i7kbAjYw3Rf/gDMNhzrLXhH+MyQJUcCrDSLHnGg8GDz/AdVcYuPAoCBxAGWJkLhqpn4C/i+9xiuCmQAh4CeA76fBtjACWiwXb/O71bm4/KSWkhzFOmffJs5vmvMD/GFUPSZdLkwa9hPxTAG1WFKNrw2eIUzHI3hbace/FYidVTglo1ls6y/mKYwA2QXlNBEkQCzRSUo+rQblnNG36hQhmLYHEEWFDdK/OE2KfhkL9coNf1mcrccWXtND48F9dqVPW8LKfJ19ZMEwGeMiprNHjVSmzPzJQuLsORART/G02nhDu96TOtGMaZjEua5p8QPzS8HWv"
+  public_key = "ssh-rsa "AAAAB3NzaC1yc2EAAAADAQABAAABAQCXPfdMfczVO/UfNrE5UV2hfJ+RtMwoFUw154rIdlZb159IzdNjy6DOBJMAoOs2U1u2xUDUqblnNXt60kqQ+IyKjiCtI3HK4CrsVCsV6259egMVdfyj5PKrUb0vWo3PXcN0NQa7gzJMyo3YGj6H6AaKOf24YwOlZmeH+6L9OomF7MeNcLl0xkm8r/6oExkR1ZZFWI3h+nEX8FG3aNRWp5w+nJ5xSjyL8y3hiv0RlC+RnqymKynIn55YOGITjK7Tl/rM2ydThUm1h2hIrBiHj/EXby8yUWRvyFxnALHnsF/nJSxq/lOTbcHXoWyeF3/qFj+lo1LM4Qi026OscdNmMCO9"
 }
