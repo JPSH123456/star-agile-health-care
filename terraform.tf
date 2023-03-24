@@ -1,4 +1,36 @@
-#Initialize Terraform
+//Security group creation and whitelisting the ip
+resource "aws_security_group" "allow_tls" {
+  name = "terraform-sg"
+
+  ingress {
+ description = "HTTPS traffic"
+ from_port = 443
+ to_port = 443
+ protocol = "tcp"
+ cidr_blocks = ["0.0.0.0/0"]
+ }
+ingress {
+ description = "HTTP traffic"
+ from_port = 0
+ to_port = 65000
+ protocol = "tcp"
+ cidr_blocks = ["0.0.0.0/0"]
+ }
+ ingress {
+ description = "SSH port"
+ from_port = 22
+ to_port = 22
+ protocol = "tcp"
+ cidr_blocks = ["0.0.0.0/0"]
+ }
+ egress {
+ from_port = 0
+ to_port = 0
+ protocol = "-1"
+ cidr_blocks = ["0.0.0.0/0"]
+ ipv6_cidr_blocks = ["::/0"]
+ }
+}
 terraform {
   required_providers {
     aws = {
@@ -8,131 +40,24 @@ terraform {
   }
 }
 
-# Configure the AWS provider
 provider "aws" {
-  region = "ap-northeast-1"
+  region     = "ap-northeast-1"
 }
-# Creating a VPC
-resource "aws_vpc" "proj-vpc" {
- cidr_block = "10.0.0.0/16"
-}
-
-# Create an Internet Gateway
-resource "aws_internet_gateway" "proj-ig" {
- vpc_id = aws_vpc.proj-vpc.id
- tags = {
- Name = "gateway1"
- }
-}
-
-# Setting up the route table
-resource "aws_route_table" "proj-rt" {
- vpc_id = aws_vpc.proj-vpc.id
- route {
- # pointing to the internet
- cidr_block = "0.0.0.0/0"
- gateway_id = aws_internet_gateway.proj-ig.id
- }
- route {
- ipv6_cidr_block = "::/0"
- gateway_id = aws_internet_gateway.proj-ig.id
- }
- tags = {
- Name = "rt1"
- }
-}
-
-# Setting up the subnet
-resource "aws_subnet" "proj-subnet" {
- vpc_id = aws_vpc.proj-vpc.id
- cidr_block = "10.0.1.0/24"
- availability_zone = "ap-northeast-1"
- tags = {
- Name = "subnet1"
- }
-}
-
-# Associating the subnet with the route table
-resource "aws_route_table_association" "proj-rt-sub-assoc" {
-subnet_id = aws_subnet.proj-subnet.id
-route_table_id = aws_route_table.proj-rt.id
-}
-
-# Creating a Security Group
-resource "aws_security_group" "proj-sg" {
- name = "proj-sg"
- description = "Enable web traffic for the project"
- vpc_id = aws_vpc.proj-vpc.id
- ingress {
- description = "HTTPS traffic"
- from_port = 443
- to_port = 443
- protocol = "tcp"
- cidr_blocks = ["0.0.0.0/0"]
- }
- ingress {
- description = "HTTP traffic"
- from_port = 0
- to_port = 65000
- protocol = "tcp"
- cidr_blocks = ["0.0.0.0/0"]
- }
- ingress {
- description = "Allow port 80 inbound"
- from_port   = 80
- to_port     = 80
- protocol    = "tcp"
- cidr_blocks = ["0.0.0.0/0"]
+resource "aws_instance" "myec2" {
+  ami                    = "ami-0b828c1c5ac3f13ee"
+  instance_type          = "t2.micro"
+  availability_zone = "ap-northeast-1a"
+  vpc_security_group_ids = [aws_security_group.allow_tls.id]
+  key_name = "tokyo"
+  tags = {
+    Name = "test-server"
   }
- egress {
- from_port = 0
- to_port = 0
- protocol = "-1"
- cidr_blocks = ["0.0.0.0/0"]
- ipv6_cidr_blocks = ["::/0"]
- }
- tags = {
- Name = "proj-sg1"
- }
+
+  provisioner "local-exec" {
+    command = "echo ${aws_instance.myec2.public_ip} > /etc/ansible/hosts"
+  }
 }
-
-# Creating a new network interface
-resource "aws_network_interface" "proj-ni" {
- subnet_id = aws_subnet.proj-subnet.id
- private_ips = ["10.0.1.10"]
- security_groups = [aws_security_group.proj-sg.id]
-}
-
-# Attaching an elastic IP to the network interface
-resource "aws_eip" "proj-eip" {
- vpc = true
- network_interface = aws_network_interface.proj-ni.id
- associate_with_private_ip = "10.0.1.10"
-}
-
-
-# Creating an ubuntu EC2 instance
-resource "aws_instance" "Prod-Server" {
- ami = "ami-0b828c1c5ac3f13ee"
- instance_type = "t2.micro"
- availability_zone = "ap-northeast-1"
- key_name = "tokyo"
- network_interface {
- device_index = 0
- network_interface_id = aws_network_interface.proj-ni.id
- }
- user_data  = <<-EOF
- #!/bin/bash
-     sudo apt-get update -y
-     sudo apt install docker.io -y
-     sudo systemctl enable docker
-     sudo docker run -p 8084:8081 -d jpsh123456/healthcare-image:latest 
-     sudo docker run -p 9090:9090 prom/prometheus
-     sudo docker run -d -p 3000:3000 grafana/grafana-enterprise
-     sudo systemctl daemon-reload
-     sudo systemctl start grafana-server
- EOF
- tags = {
- Name = "Prod-Server"
- }
+resource "aws_key_pair" "deployer" {
+  key_name   = "tokyo"
+  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC0M5dm8dWE4Cd37s0i7kbAjYw3Rf/gDMNhzrLXhH+MyQJUcCrDSLHnGg8GDz/AdVcYuPAoCBxAGWJkLhqpn4C/i+9xiuCmQAh4CeA76fBtjACWiwXb/O71bm4/KSWkhzFOmffJs5vmvMD/GFUPSZdLkwa9hPxTAG1WFKNrw2eIUzHI3hbace/FYidVTglo1ls6y/mKYwA2QXlNBEkQCzRSUo+rQblnNG36hQhmLYHEEWFDdK/OE2KfhkL9coNf1mcrccWXtND48F9dqVPW8LKfJ19ZMEwGeMiprNHjVSmzPzJQuLsORART/G02nhDu96TOtGMaZjEua5p8QPzS8HWv"
 }
